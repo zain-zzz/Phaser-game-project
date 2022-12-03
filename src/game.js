@@ -1,0 +1,1213 @@
+import Phaser from 'phaser';
+
+
+class Game extends Phaser.Scene {
+
+    constructor () {
+        super();
+    }
+
+    preload() {
+
+        this.canAttack = true;
+        this.movingLeft = false;
+        this.movingRight = false;
+        this.wasLeft = false;
+        this.wasInAir = false;
+        this.inAir = false;
+        this.doubleJumpAvailable = false;
+        this.onPlatform = false;
+        this.attacking = false;
+        this.canHitEnemies = false;
+        this.aggro = false
+        this.movementTimer = 0;
+        this.slowdownTimerDefault = 20;
+        this.currentAttack = 0;
+        this.slowdownTimer = 0;
+        this.topSpeed = 115;
+        this.acceleration = 500;
+        this.minimumJumpGravity = 1000;
+        this.maximumJumpGravity = 550;
+        this.jumpHeight = -250;
+        this.doubleJumpHeight = -250;
+        this.frictionQuantity = 400;
+        this.attackAnimation;
+        this.attackSwing;
+        this.attackSwingTwo;
+        this.attackSwingThree;
+        this.attackSwingAir;
+        this.attackSwing;
+        this.attackSwingTwo;
+        this.attackSwingThree;
+        this.attackSwingAir;
+        this.attackSwingAnimation;
+        this.attackSwingTwoAnimation;
+        this.attackSwingThreeAnimation;
+        this.attackSwingAirAnimation;
+        this.spacebar;
+        this.ground;
+
+        this.load.image('map1-art', './assets/map1.png')
+        this.load.image('map2-art', './assets/map2.png')
+        this.load.image('map3-art', './assets/map3.png')
+        this.load.image('map4-art', './assets/map4.png')
+        this.load.image('map5-art', './assets/map5.png')
+        this.load.image('map1-background', './assets/map1-background.png')
+        this.load.image('map2-background', './assets/map1-background.png')
+        this.load.image('map3-background', './assets/map1-background.png')
+        this.load.image('map4-background', './assets/map1-background.png')
+        this.load.image('map5-background', './assets/map1-background.png')
+        
+
+        this.load.image('collision-box', './assets/collision-box.png')
+        //movement
+        this.load.spritesheet('idle', './assets/player-idle.png', {frameWidth:48, frameHeight:48})
+        this.load.spritesheet('run', './assets/player-run.png', {frameWidth:48, frameHeight:48})
+        this.load.spritesheet('brake', './assets/player-brake.png', {frameWidth:48, frameHeight:48})
+        this.load.spritesheet('turn', './assets/player-turn.png', {frameWidth:48, frameHeight:48})
+        this.load.spritesheet('jump', './assets/player-jump.png', {frameWidth:48, frameHeight:48})
+        this.load.spritesheet('fall', './assets/player-fall.png', {frameWidth:48, frameHeight:48})
+        this.load.spritesheet('crouch', './assets/player-crouch.png', {frameWidth:48, frameHeight:48})
+        this.load.spritesheet('rise', './assets/player-rise.png', {frameWidth:48, frameHeight:48})
+        this.load.spritesheet('roll', './assets/player-roll.png', {frameWidth:48, frameHeight:48})
+
+
+        //attacks
+        this.load.spritesheet('attack-1', './assets/player-attack-1.png', {frameWidth:48, frameHeight:48})
+        this.load.spritesheet('attack-2', './assets/player-attack-2.png', {frameWidth:48, frameHeight:48})
+        this.load.spritesheet('attack-3', './assets/player-attack-3.png', {frameWidth:48, frameHeight:48})
+        this.load.spritesheet('attack-air', './assets/player-air-attack.png', {frameWidth:48, frameHeight:48})
+
+        this.load.spritesheet('attack-1-swing', './assets/attack-1-swing.png', {frameWidth:96, frameHeight:48})
+        this.load.spritesheet('attack-2-swing', './assets/attack-2-swing.png', {frameWidth:96, frameHeight:48})
+        this.load.spritesheet('attack-3-swing', './assets/attack-3-swing.png', {frameWidth:96, frameHeight:48})
+        this.load.spritesheet('attack-air-swing', './assets/attack-air-swing.png', {frameWidth:96, frameHeight:48})
+
+        //enemies
+
+        this.load.spritesheet('bigPlantWalk', './assets/big-plant-walk.png', {frameWidth:120, frameHeight:100})
+
+
+
+        for(let i = 1; i < 5; i++) {
+            this.load.image(`leaf${i}`, `./assets/leaf-image-${i}.png`)
+        }
+
+
+    }
+
+    create(){
+
+        this.loadMap1()
+        
+        this.loadPlayer()
+
+        this.cursors = this.input.keyboard.createCursorKeys()
+
+        // particle effects
+
+        this.randomLeaf()
+
+        //animations
+
+        //left
+        this.anims.create({
+            key: 'startRun',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('run', {start: 0, end: 10})
+        })
+
+        //right
+        this.anims.create({
+            key: 'run',
+            frameRate:10,
+            repeat:-1,
+            frames:this.anims.generateFrameNumbers('run', {start: 2, end: 10})
+        })
+
+        //movement transition
+        this.anims.create({
+            key: 'brake',
+            frameRate:7,
+            repeat: 0,
+            frames:this.anims.generateFrameNumbers('brake', {start: 1, end: 7})
+        })
+
+        //idle
+        this.anims.create({
+            key: 'idle',
+            frameRate:5,
+            repeat:-1,
+            frames:this.anims.generateFrameNumbers('idle', {start: 0, end: 6})
+        })
+
+        //turn
+        this.anims.create({
+            key: 'turn',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('turn', {start:1, end:3})
+        })
+
+        //jump
+        this.anims.create({
+            key: 'jump',
+            frameRate:8,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('jump', {start:0, end:3})
+        })
+
+        //fall
+        this.anims.create({
+            key: 'fall',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('fall', {start:0, end:3})
+        })
+
+        //crouch
+        this.anims.create({
+            key: 'crouch',
+            frameRate:8,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('crouch', {start:0, end:3})
+        })
+
+        //crouching
+        this.anims.create({
+            key: 'crouching',
+            frameRate:5,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('crouch', {start:3, end:3})
+        })
+
+        //rise
+        this.anims.create({
+            key: 'rise',
+            frameRate:1,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('rise', {start:0, end:1})
+        })
+
+        //attack 1
+        this.anims.create({
+            key: 'attack-1',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('attack-1', {start:0, end:7})
+        })
+        
+        //attack 2
+        this.anims.create({
+            key: 'attack-2',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('attack-2', {start:0, end:7})
+        })
+
+        //attack 3
+        this.anims.create({
+            key: 'attack-3',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('attack-3', {start:0, end:7})
+        })
+
+        //air attack
+        this.anims.create({
+            key: 'attack-air',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('attack-air', {start:0, end:7})
+        })
+
+                //attack 1
+        this.anims.create({
+            key: 'attack-1',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('attack-1', {start:0, end:7})
+        })
+        
+        //attack 2
+        this.anims.create({
+            key: 'attack-2',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('attack-2', {start:0, end:7})
+        })
+
+        //attack 3
+        this.anims.create({
+            key: 'attack-3',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('attack-3', {start:0, end:11})
+        })
+
+        //air attack
+        this.anims.create({
+            key: 'attack-air',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('attack-air', {start:0, end:7})
+        })
+
+
+
+
+        //attack 1 swing
+        this.anims.create({
+            key: 'attack-1-swing',
+            frameRate:12,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('attack-1-swing', {start:0, end:7})
+        })
+        
+        //attack 2 swing
+        this.anims.create({
+            key: 'attack-2-swing',
+            frameRate:12,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('attack-2-swing', {start:0, end:7})
+        })
+
+        //attack 3 swing
+        this.anims.create({
+            key: 'attack-3-swing',
+            frameRate:12,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('attack-3-swing', {start:0, end:9})
+        })
+
+        //air attack swing
+        this.anims.create({
+            key: 'attack-air-swing',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('attack-air-swing', {start:0, end:7})
+        })
+
+        //plant walk
+        this.anims.create({
+            key: 'bigPlantWalk',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('bigPlantWalk', {start: 0, end: 9})
+        })
+
+        //roll
+        this.anims.create({
+            key: 'roll',
+            frameRate:10,
+            repeat:0,
+            frames:this.anims.generateFrameNumbers('roll', {start: 0, end: 7})
+        })
+
+    }
+
+    update(){
+
+        //collision detection 
+
+        this.physics.add.collider(this.player,this.ground, () => {
+            this.onPlatform = false
+        })
+
+        this.physics.add.collider(this.player,this.platforms, () => {
+            this.onPlatform = true
+        })
+
+        if (this.bigPlant) {this.physics.add.collider(this.bigPlant,this.ground)}
+
+        this.physics.add.collider(this.player,this.zoneLeft)
+        this.physics.add.collider(this.player,this.zoneRight)
+
+        //movement ============================================================================
+
+        if(this.cursors.left.isDown) { this.movingLeft = true } else { this.movingLeft = false }
+        if(this.cursors.right.isDown) { this.movingRight = true } else { this.movingRight = false }
+
+        if(!this.attacking || ((this.inAir && this.attacking) && this.currentAttack != 5)) {
+
+        if((this.movingLeft == this.movingRight && this.movementTimer > 10) || this.cursors.down.isDown) {
+
+            if (this.slowdownTimer != 0) {
+                if(!this.cursors.down.isDown && !this.inAir) {
+                    this.player.play('brake',true) 
+                }
+
+                this.player.setAccelerationX(0)
+                this.player.setDragX(this.frictionQuantity)
+                this.slowdownTimer -= 1
+            } else {
+
+                this.player.setAccelerationX(0)
+                this.movementTimer = 0
+            }
+
+            this.player.playAfterRepeat('idle')
+
+        } else if (this.movingLeft == this.movingRight && !this.inAir) {
+            if(!this.cursors.down.isDown || !Phaser.Input.Keyboard.DownDuration(this.cursors.down,100)) {
+                this.player.play('idle',true)
+            }
+
+            this.player.setAccelerationX(0)
+            this.movementTimer = 0
+
+        } else {
+            this.movementTimer += 1
+        }
+
+        //right
+
+        if(this.movingRight && !this.movingLeft && !this.cursors.down.isDown) {
+            this.player.setAccelerationX(this.acceleration)
+            this.player.direction = 1
+            //console.log('firing right')
+
+            if (this.player.body.touching.down) {
+                if (this.player.body.newVelocity.x < 0) {
+                    this.player.play('turn',true)
+                }
+                if (this.player.body.newVelocity.x == 0 || this.wasInAir) {
+                    if (this.player.body.touching.right) {
+                        this.player.play('run',true)
+                        this.destroyAirAttack()
+                    } else {
+                        this.player.play('startRun',true)
+                        this.destroyAirAttack()
+                    }
+                }
+                if (this.player.body.newVelocity.x > 0) {
+                    this.player.play('run',true)
+                    this.destroyAirAttack()
+                }
+                
+                this.player.playAfterRepeat('run')
+
+            }
+            
+            this.player.flipX = false;
+            this.wasInAir = false;
+            this.slowdownTimer = this.slowdownTimerDefault;
+        }
+
+        //left
+
+        if(this.movingLeft && !this.movingRight && !this.cursors.down.isDown) {
+            this.player.setAccelerationX(-this.acceleration)
+            this.player.direction = -1
+            //console.log('firing right')
+
+            //animations
+            if (this.player.body.touching.down) {
+                if (this.player.body.newVelocity.x > 0) {
+                    this.player.play('turn',true)
+                }
+                if (this.player.body.newVelocity.x == 0 || this.wasInAir) {
+                    if (this.player.body.touching.left) {
+                        this.player.play('run',true)
+                        this.destroyAirAttack()
+                    } else {
+                        this.player.play('startRun',true)
+                        this.destroyAirAttack()
+                    }
+                }
+                if (this.player.body.newVelocity.x < 0) {
+                    this.player.play('run',true)
+                    this.destroyAirAttack()
+                }
+                this.player.playAfterRepeat('run')
+            }
+
+            this.player.flipX = true;
+            this.wasInAir = false;
+            this.slowdownTimer = this.slowdownTimerDefault;
+        }
+
+        }
+
+        //jump ================================================================================================
+
+        this.spaceJustDown = Phaser.Input.Keyboard.JustDown(this.cursors.space)
+        
+        //grounded check
+        if(this.player.body.touching.down) {
+            this.inAir = false
+            this.doubleJumpAvailable = true
+        } else {
+            this.inAir = true
+        }
+
+
+        if ((!this.onPlatform || !this.cursors.down.isDown)) {
+            //double jump
+
+            if(this.spaceJustDown && this.inAir && this.doubleJumpAvailable && !this.attacking) {
+                this.player.setGravityY(this.minimumJumpGravity*1.4)
+                this.player.setVelocityY(this.doubleJumpHeight)
+
+                this.leafParticles.emitParticleAt(this.player.x,this.player.y+15)
+                this.randomLeaf()
+
+                this.doubleJumpAvailable = false
+            }
+
+            //regular jump
+            if(this.spaceJustDown && !this.inAir && this.currentAttack != 3 && this.currentAttack != 5) {
+                this.player.setVelocityY(this.jumpHeight)
+
+                //intentional jump cancel
+
+                this.attacking = false
+
+                switch(this.currentAttack) {
+                    case 1:
+                        this.attackSwing.destroy()
+                        break;
+                    case 2:
+                        this.attackSwingTwo.destroy()
+                        break;
+
+                }
+
+                this.currentAttack = 0
+
+            }
+
+            //jump higher if held
+            if(this.cursors.space.isDown && this.inAir && this.doubleJumpAvailable) {
+                this.player.setGravityY(this.maximumJumpGravity)
+            }else { 
+                this.player.setGravityY(this.minimumJumpGravity)
+            }
+
+            //jump animation
+            if(this.inAir && !this.attacking) {
+                if(this.player.body.newVelocity.y < 0) {
+                    this.player.play('jump', true)
+                }
+
+                if(this.player.body.velocity.y > 0) {
+                    this.player.play('fall', true)
+                }
+                this.wasInAir = true
+            }
+
+        }
+
+        //change maps (for some reason this callbacks would cause errors 10% of the time)
+
+        if(this.zoneLeft.body.touching.right) {
+            this.loadLastArea()
+            this.zoneLeft.body.touching.right = false
+        }
+        if(this.zoneRight.body.touching.left) {
+            this.loadNextArea()
+            this.zoneRight.body.touching.left = false
+        }
+
+        [this.zoneRight.body.touching.left, this.zoneLeft.body.touching.right] = [false, false]
+        
+        //crouch
+
+        this.downJustDown = Phaser.Input.Keyboard.JustDown(this.cursors.down)
+        this.downJustUp = Phaser.Input.Keyboard.JustUp(this.cursors.down)
+
+        if(!this.attacking) {
+            if(this.downJustDown && !this.inAir) {
+                this.player.play('crouch', true)
+                this.player.setSize(12,-5).setBodySize(12,22,false)
+            }
+            else if (this.downJustUp && !this.inAir) {
+                this.player.play('rise', true)
+                this.player.setSize(12,25).setBodySize(12,37,false)
+            }
+            else if (this.cursors.down.isDown && !this.inAir){
+                this.player.playAfterRepeat('crouching')
+                this.player.setSize(12,-5).setBodySize(12,22,false)
+            } else if(this.cursors.down.isDown && this.inAir){
+                this.player.setSize(12,25).setBodySize(12,37,false)
+            }
+        
+
+            //fall through platforms
+
+            if (this.onPlatform && this.cursors.down.isDown && this.spaceJustDown && !this.inAir){
+                this.player.y += 10
+                this.player.setSize(12,25).setBodySize(12,37,false).refreshBody()
+                this.player.play('fall',true)
+            }
+
+        }
+        // Attacks =====================================================================================================
+
+        this.swordButton = this.input.keyboard.addKey('D')
+        this.swordButtonJustDown = Phaser.Input.Keyboard.JustDown(this.swordButton)
+    
+        //attack 3
+
+        if (this.attacking && this.currentAttack == 2 && this.swordButtonJustDown && this.canAttack) {
+            this.attackAnimation = this.player.play('attack-3', true)
+            this.canAttack = false
+            this.currentAttack = 3
+
+            this.translation = this.flipAttackAnimation? -1 : 1
+            this.attackSwingThree = this.physics.add.sprite(this.player.x+(this.translation*23), this.player.y, 'attack-3-swing')
+
+            this.attackSwingThreeSetCircleX = this.flipAttackAnimation ? 25 : 28
+            this.attackSwingThree.body.setCircle(1,0,1000)
+
+
+            this.attackSwingThree.body.setAllowGravity(false)
+
+            this.attackSwingThreeAnimation = this.attackSwingThree.play('attack-3-swing',true)
+            this.attackSwingThreeAnimation.on("animationcomplete", () => {
+                this.attackSwingThree.destroy()
+            })
+
+            setTimeout( () => {
+                this.canAttack = true
+            }, 800)
+
+            setTimeout( () => {
+                this.attackSwingThree.body.setCircle(20,this.attackSwingThreeSetCircleX,7)
+            }, 450)
+
+            this.attackSwingThree.flipX = this.player.flipX
+
+        }
+
+        //attack 2
+
+        if (this.attacking && this.currentAttack == 1 && this.swordButtonJustDown && this.canAttack) {
+            this.attackAnimation = this.player.play('attack-2', true)
+            this.canAttack = false
+            this.currentAttack = 2
+
+            this.translation = this.flipAttackAnimation? -1 : 1
+            this.attackSwingTwo = this.physics.add.sprite(this.player.x+(this.translation*23), this.player.y, 'attack-2-swing')
+
+            this.attackSwingTwoSetCircleX = this.flipAttackAnimation ? 26 : 38
+            this.attackSwingTwo.body.setCircle(1,0,1000)
+
+            this.attackSwingTwo.body.setAllowGravity(false)
+
+            this.attackSwingTwoAnimation = this.attackSwingTwo.play('attack-2-swing',true)
+            this.attackSwingTwoAnimation.on("animationcomplete", () => {
+                this.attackSwingTwo.destroy()
+            })
+
+            setTimeout( () => {
+                this.canAttack = true
+            }, 400)
+            
+            setTimeout( () => {
+                this.attackSwingTwo.body.setCircle(16,this.attackSwingTwoSetCircleX,14)
+            }, 250)
+
+            this.attackSwingTwo.flipX = this.player.flipX
+
+        }
+        
+
+        //attack 1
+
+        if (this.currentAttack == 0 && this.swordButtonJustDown && !this.inAir && this.canAttack) {
+            this.canAttack = false
+            this.player.setAccelerationX(0)
+            this.player.setDragX(this.frictionQuantity)
+            this.attacking = true
+            this.attackAnimation = this.player.play('attack-1', true)
+            this.currentAttack = 1
+            this.attackAnimation.on("animationcomplete", () => {
+                this.attacking = false
+                this.currentAttack = 0
+            })
+            
+            this.flipAttackAnimation = this.player.flipX
+            this.translation = this.flipAttackAnimation? -1 : 1
+            this.attackSwing = this.physics.add.sprite(this.player.x+(this.translation*23), this.player.y, 'attack-1-swing')
+            this.attackSwingSetCircleX = this.flipAttackAnimation ? 25 : 42
+            this.attackSwing.body.setCircle(1,1000,0)
+
+            this.attackSwing.body.setAllowGravity(false)
+            //this.attackSwing.setVelocityX(this.player.body.velocity.x)
+
+            this.attackSwingAnimation = this.attackSwing.play('attack-1-swing',true)
+            this.attackSwingAnimation.on("animationcomplete", () => {
+                this.attackSwing.destroy()
+            })
+
+            setTimeout( () => {
+                this.canAttack = true
+            }, 400)
+
+            setTimeout( () => {
+                this.attackSwing.body.setCircle(14,this.attackSwingSetCircleX,16)
+            }, 250)
+            
+            
+        }
+
+
+
+
+
+        if (this.inAir && this.swordButtonJustDown && this.canAttack) {
+            this.canAttack = false
+            this.player.setAcceleration(0,0)
+            this.attacking = true
+            this.attackAnimation = this.player.play('attack-air', true)
+            this.currentAttack = 4
+            this.attackAnimation.on("animationcomplete", () => {
+                this.currentAttack = 0
+            })
+
+            this.flipAttackAnimation = this.player.flipX
+            this.translation = this.flipAttackAnimation? -1 : 1
+            this.attackSwingAir = this.physics.add.sprite(this.player.x+(this.translation*23), this.player.y, 'attack-air-swing')
+            this.attackSwingAirSetCircleX = this.flipAttackAnimation ? 25 : 28
+            this.attackSwingAir.body.setCircle(1,0,700)
+
+            this.attackSwingAir.body.setAllowGravity(false)
+
+            this.attackSwingAirAnimation = this.attackSwingAir.play('attack-air-swing',true)
+            this.attackSwingAirAnimation.on("animationcomplete", () => {
+                this.attacking = false
+                this.canAttack = true
+                this.currentAttack = 0
+                this.attackSwingAir.destroy()
+            })
+
+            setTimeout( () => {
+                this.attackSwingAir.body.setCircle(20,this.attackSwingAirSetCircleX,7)
+            }, 250)
+
+            this.attackSwingAir.flipX = this.flipAttackAnimation
+
+        }
+        
+        //console.log(this.attacking)
+        //console.log(this.currentAttack)
+
+        //attach attack to player
+
+        if (this.attackSwingAir && this.attackSwingAir.displayList) {
+            this.attackSwingAir.setPosition(this.player.x+(this.translation*23),this.player.y)
+            this.player.flipX = this.attackSwingAir.flipX
+
+        }
+
+        if (this.attackSwing && this.attackSwing.displayList) {
+            this.attackSwing.setPosition(this.player.x+(this.translation*23),this.player.y)
+            this.attackSwing.flipX = this.flipAttackAnimation
+
+        }
+
+        if (this.inAir && this.currentAttack == 1) {
+            this.attackSwing.destroy()
+            this.attacking = false
+        } 
+
+        //console.log(this.player.body.y)
+
+        //if (true) {}
+
+        //roll =========================================================================
+
+        this.rollButton = this.input.keyboard.addKey('S')
+        this.rollButtonJustDown = Phaser.Input.Keyboard.JustDown(this.rollButton)
+
+        //console.log(this.rollButtonJustDown)
+
+
+
+        if (this.rollButtonJustDown && !this.inAir && this.currentAttack != 3) {
+
+            if (this.currentAttack == 1) {
+                this.attackSwing.destroy()
+            }
+
+            if(this.currentAttack == 2) {
+                this.attackSwingTwo.destroy()
+            }
+
+            this.attacking = true
+            this.currentAttack = 5
+            this.canAttack = false
+            this.rollAnimation = this.player.play('roll',true)
+
+            if (!this.player.flipX) {
+                this.player.setVelocityX(100)
+                this.player.setAccelerationX(0)
+                this.player.setDragX(0)
+            } else {
+                this.player.setVelocityX(-100)
+                this.player.setAccelerationX(0)
+                this.player.setDragX(0)
+            }
+
+            this.canBeAttacked = false
+            this.player.body.setCircle(10,14,27)
+
+            
+            setTimeout( () => {
+                this.canBeAttacked = true
+            }, 250)
+
+
+            setTimeout( () => {
+                this.player.setDragX(500)
+            }, 550)
+
+            this.rollAnimation.on("animationcomplete", () => {
+                this.attacking = false
+                this.currentAttack = 0
+                this.canAttack = true
+                this.player.setSize(12,25).setBodySize(12,37,false)
+            })
+
+
+
+            console.log(this.attacking)
+
+            console.log(this.canAttack)
+
+            
+
+        }
+        
+        //enemies =========================================================================
+
+        if (this.bigPlant) {
+            if (this.player.body.x + 200 > this.bigPlant.body.x || this.player.body.x - 200 < this.bigPlant.body.x) {
+                this.aggro = true
+            }
+
+            console.log(this.aggro)
+
+            if (this.aggro) {
+                //right
+                if(this.player.body.x > this.bigPlant.body.x) {
+                    this.bigPlant.setAccelerationX(this.acceleration)
+                    this.bigPlant.direction = -1
+
+                    //animation
+                    if (this.bigPlant.body.touching.down) {
+                        this.bigPlant.play('bigPlantWalk',true)
+                    }
+                    
+                    this.bigPlant.flipX = false
+                }
+
+                if(this.player.body.x < this.bigPlant.body.x) {
+                    this.bigPlant.setAccelerationX(-this.acceleration)
+                    this.bigPlant.direction = -1
+
+                    //animation
+                    if (this.bigPlant.body.touching.down) {
+                        this.bigPlant.play('bigPlantWalk',true)
+                    }
+                    
+                    this.bigPlant.flipX = true
+                }
+
+            }
+
+
+
+
+        }
+    }
+
+    randomLeaf(){
+        this.leafParticles = this.add.particles(`leaf${Math.floor( Math.random()* 4)+1}`)
+
+        this.leafParticles.createEmitter({
+            angle: { min: 0, max: 180},
+            speed: { min: 20, max: 35},
+            quantity: Math.floor( Math.random()* 5)+3,
+            lifespan: 1000,
+            scale: {start:Math.floor( Math.random()* 0.1)+0.3 , end:0.05},
+            rotate: {start:160, end:200, ease: 'Back.easeOut'},
+            gravityY: 15,
+            on: false
+        })
+    }
+
+    loadNextArea(){
+        if (this.currentMap != 2) {this.clearBoxes()}
+        switch(this.currentMap) {
+            case 1:
+                this.loadMap2()
+                break;
+            case 2:
+                this.loadMap3()
+                break;    
+            case 3:
+                this.loadMap4()
+                break;
+            case 4:
+                this.loadMap5()
+                break;    
+            case 5:
+                console.log('no next area')
+                break;    
+        }
+    }
+
+    loadLastArea(){
+        if (this.currentMap != 1) {this.clearBoxes(true)}
+        switch(this.currentMap) {
+            case 1:
+                console.log('No last area')
+                break;
+            case 2:
+                this.loadMap1(true)
+                break;
+            case 3:
+                this.loadMap2(true)
+                break;
+            case 4:
+                this.loadMap3(true)
+                break;
+            case 5:
+                this.loadMap4(true)
+                break;
+        }
+    }
+
+    loadPlayer(){
+        
+        this.player.setMaxVelocity(this.topSpeed,this.topSpeed*10)
+        this.player.setGravityY(550)
+
+        this.player.setSize(12,25).setBodySize(12,37,false)
+
+        this.player.setCollideWorldBounds(false)
+
+        this.cameras.main.startFollow(this.player)
+
+    }
+
+    loadMap1(sideSwitch){
+     
+        if (sideSwitch) {
+            this.coordOne = 640
+            this.coordTwo = 167
+        } else {
+            this.coordOne = 50
+            this.coordTwo = 167
+        }
+
+        this.StageWidth = 640
+        this.StageHeight = 240
+
+        this.add.image(320,120, 'map1-background')
+        this.add.image(320,120, 'map1-art')
+
+        this.cameras.main.setBounds(0,0,this.StageWidth,this.StageHeight)
+
+        this.physics.world.bounds.width = this.StageWidth
+        this.physics.world.bounds.height = this.StageHeight
+
+
+        //makes a group for all the boxes
+        this.ground = this.physics.add.staticGroup()
+        this.ground.create(200, 200, 'collision-box').setScale(80,1).refreshBody()
+        this.ground.create(464, 184, 'collision-box').setScale(2,1).refreshBody()
+        this.ground.create(504, 168, 'collision-box').setScale(3,3).refreshBody()
+
+        this.platforms = this.physics.add.staticGroup()
+
+        this.zoneRight = this.physics.add.staticGroup()
+        this.zoneRight = this.zoneRight.create(660, 105, 'collision-box').setScale(1,20).refreshBody()
+
+        this.zoneLeft = this.physics.add.staticGroup()
+        this.zoneLeft = this.zoneLeft.create(-20, 105, 'collision-box').setScale(1,20).refreshBody()
+
+        this.player = this.physics.add.sprite(this.coordOne, this.coordTwo, 'idle')
+
+        this.loadPlayer()
+
+        this.currentMap = 1
+
+    }
+
+    loadMap2(sideSwitch){
+
+        if (sideSwitch) {
+            this.coordOne = 640
+            this.coordTwo = 182
+        } else {
+            this.coordOne = 0
+            this.coordTwo = 167
+        }
+
+        this.StageWidth = 639
+        this.StageHeight = 240
+
+        this.add.image(319.5,120, 'map2-background')
+        this.add.image(320,120, 'map2-art')
+
+        this.cameras.main.setBounds(0,0,this.StageWidth,this.StageHeight)
+
+        this.physics.world.bounds.width = this.StageWidth
+        this.physics.world.bounds.height = this.StageHeight
+
+        //clears all boxes
+
+        this.ground = this.physics.add.staticGroup()
+        //floor areas
+        this.ground.create(170, 200, 'collision-box').setScale(40,1).refreshBody()
+        this.ground.create(470, 216, 'collision-box').setScale(40,1).refreshBody()
+        //hill 2
+        this.ground.create(457, 184, 'collision-box').setScale(5,9).refreshBody()
+        this.ground.create(428, 168, 'collision-box').setScale(3,3).refreshBody()
+        this.ground.create(410, 185, 'collision-box').setScale(3,3).refreshBody()
+        //floating island
+        this.ground.create(305, 120, 'collision-box').setScale(1.95,2.95).refreshBody()
+        this.ground.create(313, 128, 'collision-box').setScale(2.95,1.95).refreshBody()
+        //hill 1
+        this.ground.create(209, 168, 'collision-box').setScale(1.95,5).refreshBody()
+        //hill 3
+        this.ground.create(610, 79, 'collision-box').setScale(4,10).refreshBody()
+
+        this.platforms = this.physics.add.staticGroup()
+
+        this.tempPlats = []
+
+        this.tempPlats.push(this.platforms.create(178, 147, 'collision-box').setScale(2,0.35).refreshBody())
+        this.tempPlats.push(this.platforms.create(257, 131, 'collision-box').setScale(3.9,0.35).refreshBody())
+        this.tempPlats.push(this.platforms.create(377, 115, 'collision-box').setScale(5,0.35).refreshBody())
+        this.tempPlats.push(this.platforms.create(537, 115, 'collision-box').setScale(5,0.35).refreshBody())
+
+        this.removePlatformColliders()
+
+        this.zoneRight = this.physics.add.staticGroup()
+        this.zoneRight = this.zoneRight.create(660, 105, 'collision-box').setScale(1,20).refreshBody()
+
+
+        this.zoneLeft = this.physics.add.staticGroup()
+        this.zoneLeft = this.zoneLeft.create(-20, 105, 'collision-box').setScale(1,20).refreshBody()
+
+        this.player = this.physics.add.sprite(this.coordOne,this.coordTwo, 'idle')
+
+        this.loadPlayer()
+
+        this.currentMap = 2
+
+    }
+
+    loadMap3(sideSwitch){
+
+        this.StageWidth = 320
+        this.StageHeight = 240
+
+        if (sideSwitch) {
+            this.coordOne = this.StageWidth
+            this.coordTwo = 182
+        } else {
+            this.coordOne = 0
+            this.coordTwo = 182
+        }
+
+        this.add.image(this.StageWidth/2,this.StageHeight/2, 'map3-background')
+        this.add.image(this.StageWidth/2,this.StageHeight/2, 'map3-art')
+
+        this.cameras.main.setBounds(0,0,this.StageWidth,this.StageHeight)
+
+        this.physics.world.bounds.width = this.StageWidth
+        this.physics.world.bounds.height = this.StageHeight
+
+        //clears all boxes
+
+        this.ground = this.physics.add.staticGroup()
+
+        //floor areas
+
+        this.ground.create(260, 216, 'collision-box').setScale(40,1).refreshBody()
+        this.ground.create(160, 200, 'collision-box').setScale(4,1).refreshBody()
+
+        this.ground.create(160, 88, 'collision-box').setScale(20,1).refreshBody()
+
+        this.ground.create(0, 127, 'collision-box').setScale(4,4).refreshBody()
+        this.ground.create(this.StageWidth, 127, 'collision-box').setScale(4,4).refreshBody()
+
+
+
+        this.zoneRight = this.physics.add.staticGroup()
+        this.zoneRight = this.zoneRight.create(340, 105, 'collision-box').setScale(1,20).refreshBody()
+
+        this.zoneLeft = this.physics.add.staticGroup()
+        this.zoneLeft = this.zoneLeft.create(-20, 105, 'collision-box').setScale(1,20).refreshBody()
+
+        this.player = this.physics.add.sprite(this.coordOne,this.coordTwo, 'idle')
+
+        this.loadPlayer()
+
+        this.currentMap = 3
+
+    }
+
+    loadMap4(sideSwitch){
+
+        this.StageWidth = 640
+        this.StageHeight = 240
+
+        if (sideSwitch) {
+            this.coordOne = this.StageWidth
+            this.coordTwo = 167
+        } else {
+            this.coordOne = 0
+            this.coordTwo = 182
+        }
+
+        this.add.image(this.StageWidth/2,this.StageHeight/2, 'map4-background')
+        this.add.image(this.StageWidth/2,this.StageHeight/2, 'map4-art')
+
+        this.cameras.main.setBounds(0,0,this.StageWidth,this.StageHeight)
+
+        this.physics.world.bounds.width = this.StageWidth
+        this.physics.world.bounds.height = this.StageHeight
+
+        //clears all boxes
+
+        this.ground = this.physics.add.staticGroup()
+
+        //floor areas
+
+        this.ground.create(260, 216, 'collision-box').setScale(80,1).refreshBody()
+        this.ground.create(273, 192, 'collision-box').setScale(12,2).refreshBody()
+
+        //this.ground.create(160, 88, 'collision-box').setScale(20,1).refreshBody()
+
+        this.ground.create(0, 79, 'collision-box').setScale(4,10).refreshBody()
+        this.ground.create(580, 200, 'collision-box').setScale(12,1).refreshBody()
+        //this.ground.create(this.StageWidth, 127, 'collision-box').setScale(4,4).refreshBody()
+
+        this.platforms = this.physics.add.staticGroup()
+
+        this.tempPlats = []
+
+        this.tempPlats.push(this.platforms.create(385, 179, 'collision-box').setScale(1.9,0.35).refreshBody())
+
+        this.removePlatformColliders()
+
+        this.zoneRight = this.physics.add.staticGroup()
+        this.zoneRight = this.zoneRight.create(660, 105, 'collision-box').setScale(1,20).refreshBody()
+
+        this.zoneLeft = this.physics.add.staticGroup()
+        this.zoneLeft = this.zoneLeft.create(-20, 105, 'collision-box').setScale(1,20).refreshBody()
+
+        this.player = this.physics.add.sprite(this.coordOne,this.coordTwo, 'idle')
+
+        this.loadPlayer()
+
+        this.currentMap = 4
+
+    }
+
+    loadMap5(sideSwitch){
+     
+        if (sideSwitch) {
+            this.coordOne = 640
+            this.coordTwo = 167
+        } else {
+            this.coordOne = 0
+            this.coordTwo = 167
+        }
+
+        this.StageWidth = 640
+        this.StageHeight = 240
+
+        this.add.image(320,120, 'map5-background')
+        this.add.image(320,120, 'map5-art')
+
+        this.cameras.main.setBounds(0,0,this.StageWidth,this.StageHeight)
+
+        this.physics.world.bounds.width = this.StageWidth
+        this.physics.world.bounds.height = this.StageHeight
+
+
+        //makes a group for all the boxes
+        this.ground = this.physics.add.staticGroup()
+        this.ground.create(200, 200, 'collision-box').setScale(80,1).refreshBody()
+
+        this.platforms = this.physics.add.staticGroup()
+
+        this.zoneRight = this.physics.add.staticGroup()
+        this.zoneRight = this.zoneRight.create(660, 105, 'collision-box').setScale(1,20).refreshBody()
+
+        this.zoneLeft = this.physics.add.staticGroup()
+        this.zoneLeft = this.zoneLeft.create(-20, 105, 'collision-box').setScale(1,20).refreshBody()
+
+        this.player = this.physics.add.sprite(this.coordOne, this.coordTwo, 'idle')
+
+        this.loadPlayer()
+
+        //380
+        this.loadBigPlant(200,140)
+
+        this.currentMap = 5
+
+    }
+
+    clearBoxes(bool){
+        this.ground.clear(true,true)
+        if(this.platforms){ this.platforms.clear(true,true) }
+
+    }
+
+    destroyAirAttack(){
+        if (this.attackSwingAir && this.attackSwingAir.displayList) {
+            this.attacking = false
+            this.canAttack = true
+            this.currentAttack = 0
+            this.attackSwingAir.destroy()
+        }
+
+    }
+
+    removePlatformColliders(){
+        this.tempPlats.forEach(plat => {
+            plat.debugBodyColor = 0,0,200
+            plat.body.checkCollision.down = false
+            plat.body.checkCollision.right = false
+            plat.body.checkCollision.left = false
+        })
+    }
+
+    loadEnemy(enemy){
+        switch(enemy) {
+            case 'bigPlant':
+                this.loadBigPlant()
+
+
+
+        }
+    }
+
+    loadBigPlant(x,y) {
+
+        this.bigPlant = this.physics.add.sprite(x, y, 'bigPlantWalk')
+        this.bigPlantHealth = 100
+        //this.v
+
+        this.bigPlant.setMaxVelocity(this.topSpeed*0.3,this.topSpeed*10)
+        this.bigPlant.setGravityY(550)
+        this.bigPlant.setCircle(25,38,50)
+        //this.bigPlant.setSize(45,-1).setBodySize(50,50,false)
+
+        this.bigPlant.setCollideWorldBounds(false)
+
+    }
+
+}
+
+
+export default Game
